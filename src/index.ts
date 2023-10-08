@@ -23,7 +23,7 @@ const getViewsForId = async (id: string, unit: 'h' | 'd' | 'm' | 'y', length: nu
     return await axiom.query(`['view-counter'] | where eventType == "view" | where id == "${id}" | summarize count()`, {
         startTime: new Date(Date.now() - (length * units[unit])).toISOString(),
         endTime: new Date(Date.now()).toISOString(),
-    }).then(result => result.buckets.totals?.[0].aggregations?.[0].value).catch(error => 0);
+    }).then(result => result.buckets.totals?.[0].aggregations?.[0].value as number).catch(() => 0);
 };
 
 type Metadata = {
@@ -59,25 +59,33 @@ const server = Bun.serve({
         const url = new URL(request.url);
         console.log(`${request.method} ${request.url}`);
         switch (url.pathname) {
-            case '/':
+            case '/': {
+                const id = randomUUID();
+                const views = await getViewsForId('view-counter', 'y', 1);
                 return new Response(outdent`
                     <!DOCTYPE html>
                     <html>
                         <head>
                             <title>Free and easy pixel view counter</title>
                             <style>html, body { background: #09090b; color: #a1a1aa; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"; }</style>
+                            <style>code,pre{color:white;}</style>
+                            <style>a {color:white;}</style>
                         </head>
                         <body>
-                            <span>Please include the following html on your page to start tracking views.</span>
-                            <pre>&lt;img src="<script id='hostname_script'>document.getElementById('hostname_script').outerHTML = window.location.href</script>pixel.gif?id=${randomUUID()}" /&gt;</pre>
+                            <div>Please include the following html on your page to start tracking views.</div>
+                            <pre>&lt;img src="<href></href>pixel.gif?id=${id}" /&gt;</pre>
+                            <div>You can access the amount of views via <code><a href="/views?id=${id}&period=1d"><href></href>views?id=${id}&period=1d</a></code></div>
+                            <div>This page has had ${views} views.</div>
                             <img src="/pixel.gif?id=view-counter" />
                         </body>
+                        <script>[...document.getElementsByTagName('href')].map(element => element.outerHTML = window.location.href)</script>
                     </html>
                 `.replace(/>\s+</g, '><').trim(), {
                     headers: {
                         'Content-Type': 'text/html; charset=utf-8',
                     }
                 });
+            }
             case '/views': {
                 // Example: ?id=abc&period=1y
                 //           id=abc
