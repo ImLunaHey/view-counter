@@ -76,9 +76,9 @@ const server = Bun.serve({
                             <pre>&lt;img src="<href></href>pixel.gif?id=${id}" /&gt;</pre>
                             <div>You can access the amount of views via <code><a href="/views?id=${id}&period=1d"><href></href>views?id=${id}&period=1d</a></code></div>
                             <div>This page has had ${views} views.</div>
-                            <img src="/pixel.gif?id=view-counter" />
+                            <img src="/pixel.gif?id=view-counter" onerror="this.remove();" />
                         </body>
-                        <script>[...document.getElementsByTagName('href')].map(element => element.outerHTML = window.location.href)</script>
+                        <script>[...document.getElementsByTagName('href')].map(element => element.outerHTML = window.location.href);[...document.getElementsByTagName('script')][0].remove();</script>
                     </html>
                 `.replace(/>\s+</g, '><').trim(), {
                     headers: {
@@ -137,7 +137,7 @@ const server = Bun.serve({
                 });
             }
             default:
-                return new Response('Page not found.');
+                return new Response('Page not found.', { status: 404 });
         }
     },
 });
