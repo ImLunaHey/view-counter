@@ -54,7 +54,7 @@ const transparentPixel = Buffer.alloc(transparentPixelBase64Blob.length)
 transparentPixel.write(transparentPixelBase64Blob, 'base64');
 
 const server = Bun.serve({
-    port: 8080,
+    port: process.env.PORT ?? 8080,
     async fetch(request) {
         const url = new URL(request.url);
         console.log(`${request.method} ${request.url}`);
