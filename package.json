@@ -3,7 +3,8 @@
   "module": "src/index.ts",
   "type": "module",
   "scripts": {
-    "start": "bun run --smol src/index.ts"
+    "start": "bun run src/index.ts",
+    "dev": "bun run --watch src/index.ts"
   },
   "devDependencies": {
     "@types/semver": "^7.5.4",
@@ -15,6 +16,6 @@
   "dependencies": {
     "@axiomhq/js": "^1.0.0-rc.1",
     "outdent": "^0.8.0",
-    "semver": "^7.5.4"
+    "well-known-health": "^0.0.1"
   }
 }

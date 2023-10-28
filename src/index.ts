@@ -1,8 +1,7 @@
 import { Axiom } from '@axiomhq/js';
 import { randomUUID } from 'crypto';
 import outdent from 'outdent';
-import semver from 'semver';
-import { getCommitHash } from './get-commit-hash';
+import { health } from 'well-known-health';
 
 const axiom = new Axiom({
   token: process.env.AXIOM_TOKEN!,
@@ -58,14 +57,6 @@ const transparentPixelBase64Blob = 'R0lGODlhAQABAPAAAAAAAAAAACH5BAUKAAAALAAAAAAB
 const transparentPixel = Buffer.alloc(transparentPixelBase64Blob.length);
 transparentPixel.write(transparentPixelBase64Blob, 'base64');
 
-// Get the version of the current application
-const version = await import(`${process.cwd()}/package.json`)
-  .then((pkg) => semver.parse(pkg.version)?.major)
-  .catch(() => 'unknown');
-const releaseId = await import(`${process.cwd()}/package.json`)
-  .then((pkg) => `${pkg.version}+${getCommitHash(process.cwd())}`)
-  .catch(() => 'unknown');
-
 const server = Bun.serve({
   port: process.env.PORT ?? 8080,
   async fetch(request) {
@@ -73,23 +64,7 @@ const server = Bun.serve({
     console.log(`${request.method} ${request.url}`);
     switch (url.pathname) {
       case '/.well-known/health': {
-        const fields = {
-          version,
-          releaseId,
-          time: new Date().toISOString(),
-        };
-        return new Response(
-          JSON.stringify({
-            ...fields,
-            status: 'pass',
-          }),
-          {
-            status: 200,
-            headers: {
-              'content-type': 'application/health+json',
-            },
-          },
-        );
+        return health(request)!;
       }
       case '/': {
         const id = randomUUID();
@@ -109,7 +84,7 @@ const server = Bun.serve({
                         <pre>&lt;img src="<href></href>pixel.gif?id=${id}" /&gt;</pre>
                         <div>You can access the amount of views via <code><a href="/views?id=${id}&period=1d"><href></href>views?id=${id}&period=1d</a></code></div>
                         <div>This page has had ${views} views.</div>
-                        <img src="/pixel.gif?id=view-counter" onerror="this.remove();" />
+                        <img src="/pixel.gif?id=view-counter" style="display: none;" onerror="this.remove();" />
                     </body>
                     <script>[...document.getElementsByTagName('href')].map(element => element.outerHTML = window.location.href);[...document.getElementsByTagName('script')][0].remove();</script>
                 </html>
@@ -147,6 +122,25 @@ const server = Bun.serve({
         });
       }
       case '/pixel.gif': {
+        const id = url.searchParams.get('id')?.match(/[a-z\d\.\-]+/)?.[0];
+        if (!id) return new Response(`Error: URL is missing "id" in the query string.`);
+
+        // Record the view
+        void addViewForId(id, request).catch((error) => {
+          console.error(`Failed to add view`, {
+            id,
+            cause: error,
+          });
+        });
+
+        // Reply with transparent gif
+        return new Response(transparentPixel, {
+          headers: {
+            'Content-Type': 'image/gif',
+          },
+        });
+      }
+      case '/completely-innocent-looking-gif-nothing-to-see-here.gif': {
         const id = url.searchParams.get('id')?.match(/[a-z\d\.\-]+/)?.[0];
         if (!id) return new Response(`Error: URL is missing "id" in the query string.`);
 
